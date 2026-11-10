@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 class EmptyOrErrorState extends StatelessWidget {
   const EmptyOrErrorState({
@@ -24,8 +24,8 @@ class EmptyOrErrorState extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
           child: Column(
@@ -72,7 +72,7 @@ class EmptyOrErrorState extends StatelessWidget {
                 const SizedBox(height: 10),
                 OutlinedButton.icon(
                   onPressed: onSecondaryAction,
-                  icon: const Icon(Icons.cloud_upload_outlined, size: 20),
+                  icon: const Icon(Icons.logout_rounded, size: 20),
                   label: Text(secondaryActionLabel!),
                 ),
               ],

@@ -52,28 +52,51 @@ class AuthRepository {
       final userDocRef =
       _firestore.collection(FirestoreCollections.users).doc(user.uid);
 
-      yield* userDocRef.snapshots().map((snapshot) {
-        if (!snapshot.exists) {
+      Stream<UserModel> profileStream() async* {
+        try {
+          await for (final snapshot in userDocRef.snapshots()) {
+            if (!snapshot.exists) {
+              final now = DateTime.now().toUtc();
+              yield UserModel(
+                id: user.uid,
+                email: user.email ?? '',
+                fullName: user.displayName?.trim().isNotEmpty == true
+                    ? user.displayName!.trim()
+                    : (user.email != null && user.email!.contains('@')
+                        ? user.email!.split('@').first
+                        : 'Khách hàng'),
+                avatarUrl: user.photoURL,
+                role: claimRole,
+                createdAt: now,
+                updatedAt: now,
+              );
+            } else {
+              final effectiveRole =
+                  claimRole != UserRole.customer ? claimRole : null;
+              yield UserModel.fromFirestore(
+                snapshot,
+                claimRoleOverride: effectiveRole,
+              );
+            }
+          }
+        } catch (_) {
           final now = DateTime.now().toUtc();
-          return UserModel(
+          yield UserModel(
             id: user.uid,
             email: user.email ?? '',
             fullName: user.displayName?.trim().isNotEmpty == true
                 ? user.displayName!.trim()
-                : 'Khách hàng',
+                : (user.email != null && user.email!.contains('@')
+                    ? user.email!.split('@').first
+                    : 'Khách hàng'),
             avatarUrl: user.photoURL,
             role: claimRole,
             createdAt: now,
             updatedAt: now,
           );
         }
-        final effectiveRole =
-        claimRole != UserRole.customer ? claimRole : null;
-        return UserModel.fromFirestore(
-          snapshot,
-          claimRoleOverride: effectiveRole,
-        );
-      });
+      }
+      yield* profileStream();
     });
   }
 

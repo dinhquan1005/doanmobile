@@ -10,7 +10,6 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Kiểm tra quyền Admin/Staff an toàn, không gây lỗi khi document user chưa tồn tại hoặc token không có claim role
     function isStaffOrAdmin() {
       return isSignedIn() && (
         'role' in request.auth.token && (
@@ -21,7 +20,8 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read, write: if isOwner(userId) || isStaffOrAdmin();
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId) || isStaffOrAdmin();
 
       match /addresses/{addressId} {
         allow read, write: if isOwner(userId) || isStaffOrAdmin();
