@@ -46,3 +46,8 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Project Report (Local only)
+BAO_CAO_DO_AN_*.md
+*.docx
+
