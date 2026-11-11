@@ -19,16 +19,10 @@ class AuthRepository {
   final FirebaseFirestore _firestore;
   final GoogleSignIn? _googleSignIn;
 
-  /// [VẤN ĐÁP] Lắng nghe thay đổi trạng thái phiên xác thực (Logged In / Logged Out)
-  /// Trả về `Stream<User?>` từ Firebase Auth để UI tự động cập nhật khi người dùng đăng nhập hoặc đăng xuất.
   Stream<User?> authStateChanges() => _firebaseAuth.authStateChanges();
 
-  /// [VẤN ĐÁP] Lấy thông tin user hiện tại đang đăng nhập trực tiếp từ bộ nhớ đệm Firebase Auth
   User? get currentFirebaseUser => _firebaseAuth.currentUser;
 
-  /// [VẤN ĐÁP] Đọc Custom Claims từ ID Token để xác định quyền Admin/Staff chính xác từ máy chủ
-  /// - Mục đích: Bảo mật phía server. Client không thể tự ý sửa role trong Firestore để chiếm quyền Admin.
-  /// - forceRefresh: Ép Firebase làm mới JWT Token để nhận quyền mới nhất nếu vừa được cấp quyền.
   Future<UserRole> getClaimRole(User user, {bool forceRefresh = false}) async {
     try {
       final idTokenResult = await user.getIdTokenResult(forceRefresh);
@@ -39,9 +33,6 @@ class AuthRepository {
     }
   }
 
-  /// [VẤN ĐÁP] Lắng nghe hồ sơ người dùng thời gian thực (Real-time Stream) từ Firestore kết hợp Claims
-  /// - Sử dụng `asyncExpand` để chuyển đổi từ Stream Firebase User sang Stream UserModel
-  /// - Tự động đồng bộ khi thông tin họ tên, số điện thoại, avatar trong Firestore thay đổi.
   Stream<UserModel?> watchCurrentUserProfile() {
     return _firebaseAuth.authStateChanges().asyncExpand((User? user) async* {
       if (user == null) {
@@ -100,9 +91,6 @@ class AuthRepository {
     });
   }
 
-  /// [VẤN ĐÁP] Đăng nhập bằng tài khoản Email & Mật khẩu
-  /// - Bước 1: Gọi `signInWithEmailAndPassword` của Firebase Auth để kiểm tra thông tin đăng nhập.
-  /// - Bước 2: Gọi `_ensureUserDocument` để lấy thông tin hồ sơ tương ứng từ Firestore.
   Future<UserModel> signInWithEmailAndPassword({
     required String email,
     required String password,
@@ -124,10 +112,6 @@ class AuthRepository {
     }
   }
 
-  /// [VẤN ĐÁP] Đăng ký tài khoản người dùng mới
-  /// - Bước 1: Tạo tài khoản trên Firebase Authentication bằng `createUserWithEmailAndPassword`.
-  /// - Bước 2: Cập nhật `displayName` trên Auth Profile.
-  /// - Bước 3: Tạo document mới lưu vào Firestore collection `users/{uid}`.
   Future<UserModel> registerWithEmailAndPassword({
     required String fullName,
     required String email,
@@ -155,11 +139,6 @@ class AuthRepository {
     }
   }
 
-  /// [VẤN ĐÁP] Đăng nhập bằng Google (OAuth 2.0)
-  /// - Bước 1: Mở hộp thoại Google Sign-In trên thiết bị để người dùng chọn tài khoản Google.
-  /// - Bước 2: Nhận `idToken` và `accessToken` từ tài khoản Google.
-  /// - Bước 3: Đổi Google Auth Credential lấy Firebase User Credential thông qua `signInWithCredential`.
-  /// - Bước 4: Đồng bộ hồ sơ tài khoản Google vào Firestore.
   Future<UserModel> signInWithGoogle() async {
     try {
       final googleClient = _googleSignIn ??
@@ -213,8 +192,6 @@ class AuthRepository {
     }
   }
 
-  /// [VẤN ĐÁP] Gửi email đặt lại mật khẩu cho người dùng
-  /// Firebase Authentication sẽ gửi một liên kết an toàn tới email được chỉ định.
   Future<void> sendPasswordResetEmail(String email) async {
     try {
       await _firebaseAuth.sendPasswordResetEmail(email: email.trim());
@@ -223,8 +200,6 @@ class AuthRepository {
     }
   }
 
-  /// [VẤN ĐÁP] Đăng xuất người dùng
-  /// Hủy phiên trên cả Google Sign-In (nếu có) và Firebase Authentication.
   Future<void> signOut() async {
     try {
       final googleClient = _googleSignIn;
@@ -237,10 +212,6 @@ class AuthRepository {
     await _firebaseAuth.signOut();
   }
 
-  /// [VẤN ĐÁP] Khởi tạo hoặc đồng bộ Document người dùng trong Cloud Firestore
-  /// - Khi người dùng đăng nhập lần đầu (qua Google hoặc Email), hàm kiểm tra document `users/{uid}`.
-  /// - Nếu chưa tồn tại: Tạo document mới với vai trò mặc định là `customer` (hoặc `admin` nếu là email quản trị viên mặc định).
-  /// - Nếu đã tồn tại: Đọc thông tin và kiểm tra xem tài khoản có bị khóa (`isBlocked`) hay không.
   Future<UserModel> _ensureUserDocument(
       User user, {
         String? fullNameOverride,

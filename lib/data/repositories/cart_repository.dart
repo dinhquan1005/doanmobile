@@ -24,8 +24,6 @@ class CartRepository {
     return _firestore.collection(FirestoreCollections.carts).doc(userId);
   }
 
-  /// [VẤN ĐÁP] Đọc giỏ hàng cục bộ từ SharedPreferences cho khách chưa đăng nhập (Guest)
-  /// Trả về `CartDocumentModel` với `userId: 'guest'`. Nếu dữ liệu lỗi thì trả về giỏ hàng trống an toàn.
   CartDocumentModel loadGuestCart() {
     final prefs = _prefs;
     final now = DateTime.now().toUtc();
@@ -136,10 +134,6 @@ class CartRepository {
     await _userCartDoc(userId).set(cartModel.toFirestoreMap());
   }
 
-  /// [VẤN ĐÁP] Hợp nhất giỏ hàng cục bộ (Guest) vào giỏ hàng Firestore ngay khi người dùng đăng nhập
-  /// - Nếu sản phẩm đã có trong giỏ Firestore: Cộng dồn số lượng `quantity`.
-  /// - Nếu sản phẩm chưa có: Thêm mới vào danh sách.
-  /// - Sau khi hợp nhất xong: Xóa sạch giỏ hàng cục bộ trên SharedPreferences để tránh cộng dồn lặp lại.
   Future<CartDocumentModel> mergeGuestCartIntoUserCart(String userId) async {
     final guestCart = loadGuestCart();
     final remoteCart = await fetchUserCart(userId);
@@ -215,12 +209,6 @@ class CartRepository {
     return result;
   }
 
-  /// [VẤN ĐÁP] Tái đối chiếu danh sách linh kiện trong giỏ với Giá bán & Tồn kho mới nhất từ Firestore
-  /// - Nguyên tắc bảo mật: Client KHÔNG BAO GIỜ được gửi giá tiền lên server khi thanh toán.
-  /// - Hàm này lấy thông tin ProductModel mới nhất để phát hiện:
-  ///   1. Linh kiện đã bị xóa hoặc ngừng kinh doanh (`isActive == false`).
-  ///   2. Giá bán linh kiện vừa được cập nhật giảm hoặc tăng.
-  ///   3. Số lượng khách chọn vượt quá số lượng còn khả dụng trong kho (`availableStock`).
   Future<List<ResolvedCartItem>> resolveCartItemsWithLatestProducts(
       List<CartItemEntry> entries,
       ) async {
@@ -241,13 +229,6 @@ class CartRepository {
         .toList(growable: false);
   }
 
-  /// [VẤN ĐÁP] Kiểm tra tính hợp lệ của Voucher mã giảm giá từ Firestore
-  /// Các điều kiện kiểm tra nghiêm ngặt:
-  /// 1. Document mã có tồn tại trên Firestore hay không.
-  /// 2. Mã có đang được kích hoạt hay không (`isActive`).
-  /// 3. Thời gian hiện tại có nằm trong khoảng `[startDate, endDate]` không.
-  /// 4. Đã đạt giới hạn số lượt sử dụng tối đa chưa (`usedCount < usageLimit`).
-  /// 5. Tổng tiền tạm tính của các món được chọn có đạt mức tối thiểu (`currentSubtotal >= minOrderAmount`).
   Future<CouponModel> validateCoupon({
     required String rawCode,
     required int currentSubtotal,

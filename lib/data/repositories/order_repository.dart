@@ -73,10 +73,6 @@ class OrderRepository {
     await _addressesRef(userId).doc(addressId).delete();
   }
 
-  /// [VẤN ĐÁP] Điểm bắt đầu quy trình Đặt hàng từ phía người dùng
-  /// - Kiểm tra trạng thái đăng nhập của người dùng.
-  /// - Kiểm tra danh sách sản phẩm yêu cầu (`requestedItems`) không được rỗng.
-  /// - Chuyển sang thực thi Giao dịch nguyên tử `_executeAtomicOrderTransaction`.
   Future<OrderModel> placeOrder({
     required String idempotencyKey,
     required List<OrderRequestedItem> requestedItems,
@@ -112,14 +108,6 @@ class OrderRepository {
     );
   }
 
-  /// [VẤN ĐÁP] Giao dịch đặt hàng nguyên tử (Atomic Order Transaction)
-  /// Đây là hàm quan trọng nhất trong toàn bộ hệ thống bán hàng:
-  /// 1. [CHỐNG TẠO ĐƠN TRÙNG]: Kiểm tra document `order_idempotency/{idempotencyKey}`. Nếu mạng chập chờn hoặc người dùng bấm 2 lần, hàm trả về đơn hàng đã tạo trước đó thay vì trừ tiền 2 lần.
-  /// 2. [TÍNH LẠI GIÁ BÁN]: Tuyệt đối KHÔNG tin giá tiền từ client gửi lên. Đọc trực tiếp giá từ Firestore collection `products` để tính lại tổng tiền (`subtotal`).
-  /// 3. [KIỂM TRA TỒN KHO & CHỐNG RACE CONDITION]: Sử dụng Firestore Transaction (khóa lạc quan). Nếu `availableStock < req.quantity`, lập tức ném ngoại lệ `InsufficientStockFailure` và ROLLBACK toàn bộ.
-  /// 4. [XÁC MINH VOUCHER]: Kiểm tra mã giảm giá còn hiệu lực, số lượt sử dụng và điều kiện đơn tối thiểu.
-  /// 5. [LƯU SNAPSHOT SẢN PHẨM]: Chụp ảnh dữ liệu (Snapshot) tên, giá, ảnh, bảo hành tại thời điểm mua để nếu sau này giá sản phẩm đổi thì đơn hàng cũ vẫn giữ nguyên giá lúc mua.
-  /// 6. [TRỪ TỒN KHO & GHI LOG]: Giảm `stockQuantity`, tăng `soldCount`, tăng `usedCount` của voucher và ghi log vào `inventory_transactions`.
   Future<OrderModel> _executeAtomicOrderTransaction({
     required String userId,
     required String userEmail,
@@ -430,11 +418,6 @@ class OrderRepository {
     );
   }
 
-  /// [VẤN ĐÁP] Hủy đơn hàng và tự động Hoàn trả tồn kho (Stock Rollback)
-  /// - Kiểm tra quyền: Chỉ chủ sở hữu đơn hàng hoặc Quản trị viên mới có quyền hủy đơn.
-  /// - Kiểm tra trạng thái: Chỉ đơn hàng đang ở trạng thái `pending` (Chờ xác nhận) mới được phép hủy.
-  /// - Hoàn trả tồn kho: Thực thi trong Transaction để cộng lại `stockQuantity` và `availableStock`, trừ `soldCount`.
-  /// - Ghi nhật ký: Ghi log biến động kho vào `inventory_transactions` với type `restock_cancel` để đối soát.
   Future<void> cancelOrderAndRestoreStock({
     required String orderId,
     required String userId,

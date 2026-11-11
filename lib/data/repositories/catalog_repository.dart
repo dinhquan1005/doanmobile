@@ -67,8 +67,7 @@ class CatalogRepository {
 
   static final Map<String, String> _storageUrlCache = <String, String>{};
 
-  /// [VẤN ĐÁP] Chuyển đổi đường dẫn ảnh từ Firebase Storage sang HTTPS Download URL
-  /// - Bộ nhớ đệm `_storageUrlCache`: Giảm thiểu tối đa số lượng request gọi lên Firebase Storage, tiết kiệm băng thông và tăng tốc độ hiển thị UI.
+  /// Chuyển đổi đường dẫn Firebase Storage (gs://... hoặc products/...) sang Download URL HTTPS
   Future<String> resolveStorageImageUrl(String rawUrlOrPath) async {
     final trimmed = rawUrlOrPath.trim();
     if (trimmed.isEmpty) {
@@ -96,7 +95,6 @@ class CatalogRepository {
     }
   }
 
-  /// [VẤN ĐÁP] Lấy danh sách Banner quảng cáo đang hoạt động
   Future<List<BannerModel>> fetchActiveBanners() async {
     final snapshot = await _firestore
         .collection(FirestoreCollections.banners)
@@ -109,7 +107,6 @@ class CatalogRepository {
     return sorted;
   }
 
-  /// [VẤN ĐÁP] Lấy danh mục linh kiện (Category) xếp theo thứ tự hiển thị `sortOrder`
   Future<List<CategoryModel>> fetchCategories() async {
     final snapshot = await _firestore
         .collection(FirestoreCollections.categories)
@@ -122,7 +119,6 @@ class CatalogRepository {
     return sorted;
   }
 
-  /// [VẤN ĐÁP] Lấy danh sách thương hiệu sản xuất (ASUS, Intel, AMD, Corsair...)
   Future<List<BrandModel>> fetchBrands() async {
     final snapshot = await _firestore
         .collection(FirestoreCollections.brands)
@@ -135,8 +131,6 @@ class CatalogRepository {
     return sorted;
   }
 
-  /// [VẤN ĐÁP] Lấy danh sách Voucher mã giảm giá đang còn hiệu lực
-  /// Lọc theo thời gian UTC hiện tại: `startDate <= now <= endDate`
   Future<List<CouponModel>> fetchActiveCoupons() async {
     final snapshot = await _firestore
         .collection(FirestoreCollections.coupons)
@@ -149,9 +143,6 @@ class CatalogRepository {
         .toList(growable: false);
   }
 
-  /// [VẤN ĐÁP] Gói dữ liệu tổng hợp cho Trang chủ (Home Catalog Bundle)
-  /// - Sử dụng `Future.wait`: Chạy song song 5 truy vấn đồng thời để giảm thiểu thời gian chờ tải trang.
-  /// - Phân loại linh kiện: Sản phẩm nổi bật (Featured), Mới về (New), Đang giảm giá (Sale), Bán chạy nhất (Best Sellers).
   Future<HomeCatalogBundle> fetchHomeCatalogBundle() async {
     final results = await Future.wait<dynamic>([
       fetchActiveBanners(),
@@ -214,11 +205,6 @@ class CatalogRepository {
         .toList(growable: false);
   }
 
-  /// [VẤN ĐÁP] Tìm kiếm, lọc đa điều kiện, sắp xếp và phân trang linh kiện từ Cloud Firestore
-  /// - Phân trang con trỏ (Cursor Pagination): Sử dụng `startAfterDocument(startAfterDoc)` thay vì offset, giúp tốc độ truy vấn luôn là O(1) bất kể dữ liệu lớn.
-  /// - Tìm kiếm SKU / Tên: Tách từ khóa thành token chữ thường và truy vấn mảng `searchKeywords` bằng toán tử `arrayContains`.
-  /// - Lọc nâng cao: Lọc danh mục con/cha (`categoryId`), hãng (`brandId`), chỉ còn hàng (`inStock`), chỉ giảm giá (`isOnSale`).
-  /// - Lọc khoảng giá (minPrice, maxPrice) & sắp xếp: Tinh chỉnh cục bộ trên tập kết quả để đảm bảo hiển thị giá tiền VND chuẩn xác.
   Future<PaginatedProductsResult> queryProducts({
     required ProductFilter filter,
     DocumentSnapshot<Map<String, dynamic>>? startAfterDoc,
@@ -422,15 +408,13 @@ class CatalogRepository {
         .toList(growable: false);
   }
 
-  /// [VẤN ĐÁP] Thêm mới linh kiện vào Cloud Firestore (Dành cho Quản trị viên)
-  /// Sử dụng `doc(product.id).set(...)` để tạo mới document hoàn chỉnh.
+  /// Thêm mới linh kiện vào Cloud Firestore (Dành cho Admin)
   Future<void> createProduct(ProductModel product) async {
     final ref = _firestore.collection(FirestoreCollections.products).doc(product.id);
     await ref.set(product.toFirestoreMap());
   }
 
-  /// [VẤN ĐÁP] Cập nhật thông tin linh kiện trên Cloud Firestore (Dành cho Quản trị viên)
-  /// Cập nhật giá bán, số lượng tồn kho và tự động đóng dấu thời gian cập nhật bằng `FieldValue.serverTimestamp()`.
+  /// Cập nhật thông tin linh kiện trên Cloud Firestore (Dành cho Admin)
   Future<void> updateProduct(ProductModel product) async {
     final ref = _firestore.collection(FirestoreCollections.products).doc(product.id);
     await ref.update({
@@ -439,9 +423,7 @@ class CatalogRepository {
     });
   }
 
-  /// [VẤN ĐÁP] Xóa linh kiện (Hỗ trợ Xóa mềm & Xóa vĩnh viễn)
-  /// - `permanent == false` (Xóa mềm - Soft Delete): Đánh dấu cờ `isDeleted = true, isActive = false`, bảo toàn dữ liệu lịch sử cho các đơn hàng cũ.
-  /// - `permanent == true` (Xóa cứng - Hard Delete): Xóa hoàn toàn document khỏi Firestore.
+  /// Xóa hoặc ẩn linh kiện khỏi hệ thống (Dành cho Admin)
   Future<void> deleteProduct(String productId, {bool permanent = false}) async {
     final ref = _firestore.collection(FirestoreCollections.products).doc(productId);
     if (permanent) {

@@ -20,19 +20,12 @@ import '../features/search/screens/catalog_search_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
-/// [VẤN ĐÁP] Provider cấu hình hệ thống điều hướng toàn ứng dụng (GoRouter)
-/// - Quản lý cây điều hướng phân cấp (Root Navigator & Shell Navigator).
-/// - Tự động tái tính toán điều hướng khi `currentUserProfileProvider` thay đổi (Reactive Auth Redirect).
 final appRouterProvider = Provider<GoRouter>((ref) {
   final userProfileAsync = ref.watch(currentUserProfileProvider);
 
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/',
-    /// [VẤN ĐÁP] Bộ bảo vệ tuyến đường (Route Guards / Redirect Logic)
-    /// - Bảo vệ 1: Người dùng đã đăng nhập thì không được vào lại trang Đăng nhập / Đăng ký.
-    /// - Bảo vệ 2: Chưa đăng nhập mà truy cập `/checkout` thì chuyển hướng bắt buộc đăng nhập.
-    /// - Bảo vệ 3: Phân quyền quản trị - Không có quyền `isStaffOrAdmin` mà vào `/admin` thì lập tức bị chặn.
     redirect: (BuildContext context, GoRouterState state) {
       final user = userProfileAsync.valueOrNull;
       final isLoggedIn = user != null;
@@ -57,8 +50,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      /// [VẤN ĐÁP] StatefulShellRoute.indexedStack: Giữ nguyên trạng thái (Preserve State)
-      /// Giúp 5 tab đáy (Trang chủ, Danh mục, Giỏ hàng, Đơn hàng, Tài khoản) không bị rebuild/mất dữ liệu khi bấm chuyển qua lại.
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
           return MainShellScreen(navigationShell: navigationShell);
